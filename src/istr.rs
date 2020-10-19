@@ -17,6 +17,7 @@ use std::{
 
 use crate::pool::Handle;
 
+/// Immutable Pool String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct IStr(Handle);
 

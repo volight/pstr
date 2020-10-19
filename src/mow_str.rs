@@ -40,6 +40,7 @@ impl PartialEq for MowStrInteral {
     }
 }
 
+/// Mutable on Write Pool String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MowStr(MowStrInteral);
 
