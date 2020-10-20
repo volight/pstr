@@ -14,9 +14,9 @@ use std::{
     sync::Arc,
 };
 
-use crate::pool::Handle;
+use crate::{pool::Handle, Interned, MowStr};
 
-/// Immutable Pool String
+/// Immutable Interning Pool String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct IStr(Handle);
 
@@ -59,10 +59,17 @@ impl IStr {
     }
 
     #[inline]
-    pub fn into_boxed_str(self) -> Box<str> {
+    pub fn into_boxed_str(&self) -> Box<str> {
         self.deref().into()
     }
+
+    #[inline]
+    pub fn into_mut(&self) -> MowStr {
+        MowStr::from(self.clone())
+    }
 }
+
+unsafe impl Interned for IStr {}
 
 impl Deref for IStr {
     type Target = str;
@@ -307,5 +314,11 @@ impl From<IStr> for String {
     #[inline]
     fn from(v: IStr) -> Self {
         v.to_string()
+    }
+}
+
+impl From<String> for IStr {
+    fn from(v: String) -> Self {
+        Self::from_string(v)
     }
 }

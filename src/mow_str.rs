@@ -15,9 +15,9 @@ use std::{
     sync::Arc,
 };
 
-use crate::IStr;
+use crate::{IStr, Interned};
 
-#[derive(Debug, Clone, Eq, Ord, PartialOrd)]
+#[derive(Debug, Eq, Ord, PartialOrd)]
 enum MowStrInteral {
     I(IStr),
     M(Option<String>),
@@ -39,8 +39,8 @@ impl PartialEq for MowStrInteral {
     }
 }
 
-/// Mutable on Write Pool String
-#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
+/// Mutable on Write Interning Pool String
+#[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MowStr(MowStrInteral);
 
 impl MowStr {
@@ -266,6 +266,17 @@ impl MowStr {
     #[inline]
     pub fn replace_range<R: RangeBounds<usize>>(&mut self, range: R, replace_with: &str) {
         self.mutdown().replace_range(range, replace_with)
+    }
+}
+
+unsafe impl Interned for MowStr {}
+
+impl Clone for MowStr {
+    fn clone(&self) -> Self {
+        match &self.0 {
+            MowStrInteral::I(v) => Self::from(v.clone()),
+            MowStrInteral::M(v) => Self::from_string(v.clone().unwrap()),
+        }
     }
 }
 
