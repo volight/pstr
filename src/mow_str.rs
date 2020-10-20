@@ -15,7 +15,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{IStr, Interned};
+use crate::{IStr, Interned, Muterned};
 
 #[derive(Debug, Eq, Ord, PartialOrd)]
 enum MowStrInteral {
@@ -90,8 +90,18 @@ impl MowStr {
     }
 
     #[inline]
+    pub fn from_boxed_str_mut(s: Box<str>) -> Self {
+        Self(MowStrInteral::M(Some(s.to_string())))
+    }
+
+    #[inline]
     pub fn from_istr(s: IStr) -> Self {
         Self(MowStrInteral::I(s))
+    }
+
+    #[inline]
+    pub fn from_istr_mut(s: IStr) -> Self {
+        Self(MowStrInteral::M(Some(s.to_string())))
     }
 
     #[inline]
@@ -270,6 +280,7 @@ impl MowStr {
 }
 
 unsafe impl Interned for MowStr {}
+unsafe impl Muterned for MowStr {}
 
 impl Clone for MowStr {
     fn clone(&self) -> Self {
