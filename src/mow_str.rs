@@ -4,7 +4,6 @@ use std::{
     ffi::{OsStr, OsString},
     fmt::Write,
     hash::{self, Hash},
-    intrinsics::transmute,
     iter::{Extend, FromIterator},
     net::ToSocketAddrs,
     ops::{Add, AddAssign, Deref, DerefMut, Index, IndexMut, RangeBounds},
@@ -91,23 +90,8 @@ impl MowStr {
     }
 
     #[inline]
-    pub fn from_arc_str(s: Arc<str>) -> Self {
-        unsafe { Self::from_raw_arc(transmute(s)) }
-    }
-
-    #[inline]
     pub fn from_istr(s: IStr) -> Self {
         Self(MowStrInteral::I(s))
-    }
-
-    #[inline]
-    pub unsafe fn from_raw_arc(s: Arc<[u8]>) -> Self {
-        Self(MowStrInteral::I(IStr::from_raw_arc(s)))
-    }
-
-    #[inline]
-    pub unsafe fn from_raw(s: *const [u8]) -> Self {
-        Self(MowStrInteral::I(IStr::from_raw(s)))
     }
 
     #[inline]
@@ -189,22 +173,6 @@ impl MowStr {
     #[inline]
     pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         self.mutdown().as_mut_vec()
-    }
-
-    #[inline]
-    pub fn as_arc(&self) -> Arc<str> {
-        match &self.0 {
-            MowStrInteral::I(v) => v.as_arc(),
-            MowStrInteral::M(v) => v.clone().unwrap().into(),
-        }
-    }
-
-    #[inline]
-    pub fn into_arc(self) -> Arc<str> {
-        match self.0 {
-            MowStrInteral::I(v) => v.as_arc(),
-            MowStrInteral::M(v) => v.unwrap().into(),
-        }
     }
 
     #[inline]

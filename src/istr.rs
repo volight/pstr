@@ -3,7 +3,6 @@ use std::{
     error::Error,
     ffi::{OsStr, OsString},
     hash::{self, Hash},
-    intrinsics::transmute,
     iter::FromIterator,
     net::ToSocketAddrs,
     ops::{Deref, Index},
@@ -48,21 +47,6 @@ impl IStr {
     }
 
     #[inline]
-    pub fn from_arc_str(s: Arc<str>) -> Self {
-        unsafe { Self::from_raw_arc(transmute(s)) }
-    }
-
-    #[inline]
-    pub unsafe fn from_raw_arc(s: Arc<[u8]>) -> Self {
-        Self(Handle::from_arc(s))
-    }
-
-    #[inline]
-    pub unsafe fn from_raw(s: *const [u8]) -> Self {
-        Self(Handle::from_raw(s))
-    }
-
-    #[inline]
     pub unsafe fn from_utf8_unchecked(bytes: impl AsRef<[u8]>) -> Self {
         Self::new(from_utf8_unchecked(bytes.as_ref()))
     }
@@ -72,11 +56,6 @@ impl IStr {
     #[inline]
     pub fn as_str(&self) -> &str {
         self.deref()
-    }
-
-    #[inline]
-    pub fn as_arc(&self) -> Arc<str> {
-        unsafe { transmute(self.0.get_arc()) }
     }
 
     #[inline]
@@ -265,7 +244,7 @@ impl From<IStr> for Vec<u8> {
 impl From<IStr> for Arc<str> {
     #[inline]
     fn from(v: IStr) -> Self {
-        unsafe { transmute(v.0.get_arc()) }
+        Self::from(v.deref())
     }
 }
 
