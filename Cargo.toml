@@ -1,8 +1,12 @@
 [package]
 name = "pstr"
-version = "0.1.0"
-authors = ["Package <u2a5f@outlook.com>"]
+version = "0.0.0"
+authors = ["2A5F <u2a5f@outlook.com>"]
 edition = "2018"
+description = "String pool"
+repository = "https://github.com/volight/pstr"
+license = "MIT"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
