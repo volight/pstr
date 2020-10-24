@@ -56,6 +56,11 @@ impl<T: ?Sized> Prc<T> {
 
 impl<T: ?Sized> Prc<T> {
     #[inline]
+    pub fn inner_ptr_usize(&self) -> usize {
+        self.inner.as_ptr() as usize
+    }
+
+    #[inline]
     fn inner(&self) -> &PrcInner {
         unsafe { self.inner.as_ref() }
     }

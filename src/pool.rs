@@ -7,7 +7,7 @@ use crate::prc::Prc;
 
 static POOL: Lazy<Arc<DashSet<Prc<str>>>> = Lazy::new(|| Arc::new(DashSet::new()));
 
-#[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, Ord, PartialOrd)]
 pub(crate) struct Handle(Prc<str>);
 
 impl Handle {
@@ -45,6 +45,12 @@ impl Handle {
     #[inline]
     pub fn get(&self) -> &str {
         self.0.as_ref()
+    }
+}
+
+impl PartialEq for Handle {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.inner_ptr_usize() == other.0.inner_ptr_usize()
     }
 }
 
