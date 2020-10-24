@@ -3,10 +3,12 @@ name = "pstr"
 version = "0.2.1"
 authors = ["2A5F <u2a5f@outlook.com>"]
 edition = "2018"
-description = "String pool"
+description = "Global String Intern Pool"
 repository = "https://github.com/volight/pstr"
 license = "MIT"
 readme = "README.md"
+keywords = ["intern", "string", "pool", "interning", "interned"]
+categories = ["rust-patterns", "caching"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
