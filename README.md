@@ -1,7 +1,7 @@
 ***Global string intern pool***  
 
-[![version](https://img.shields.io/crates/v/pstr)](https://crates.io/crates/pstr)
 ![Rust](https://github.com/volight/pstr/workflows/Rust/badge.svg)
+[![version](https://img.shields.io/crates/v/pstr)](https://crates.io/crates/pstr)
 [![documentation](https://docs.rs/pstr/badge.svg)](https://docs.rs/pstr)
 
 Internal use of [DashMap](https://crates.io/crates/dashmap) for concurrent support
