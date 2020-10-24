@@ -2,16 +2,17 @@
 
 [![version](https://img.shields.io/crates/v/pstr)](https://crates.io/crates/pstr)
 ![Rust](https://github.com/volight/pstr/workflows/Rust/badge.svg)
+[![documentation](https://docs.rs/pstr/badge.svg)](https://docs.rs/pstr)
 
 Internal use of [DashMap](https://crates.io/crates/dashmap) for concurrent support
 
 # Examples
-- [`IStr`](struct.IStr.html)
+- [`IStr`](https://docs.rs/pstr/0.2.0/pstr/struct.IStr.html)
 ```rust
 use pstr::IStr;
 let s = IStr::new("hello world");
 ```
-- [`MowStr`](struct.MowStr.html)
+- [`MowStr`](https://docs.rs/pstr/0.2.0/pstr/struct.MowStr.html)
 ```rust
 use pstr::MowStr;
 let mut s = MowStr::new("hello");
