@@ -58,3 +58,49 @@ pub fn collect_garbage() {
     let pool = POOL.clone();
     pool.retain(|prc| Prc::<str>::strong_count(prc) > 1)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        let h = Handle::new("asd");
+        assert_eq!(h.get(), "asd");
+    }
+
+    #[test]
+    fn test_same() {
+        let h1 = Handle::new("asd");
+        let h2 = Handle::new("asd");
+        assert_eq!(h1, h2);
+        assert_eq!(h1.get(), "asd");
+        assert_eq!(h2.get(), "asd");
+    }
+
+    #[test]
+    fn test_not_same() {
+        let h1 = Handle::new("asd");
+        let h2 = Handle::new("123");
+        assert_ne!(h1, h2);
+        assert_eq!(h1.get(), "asd");
+        assert_eq!(h2.get(), "123");
+    }
+
+    #[test]
+    #[ignore]
+    fn test_pool_gc() {
+        let pool = POOL.clone();
+        assert_eq!(pool.len(), 0);
+        Handle::new("asd");
+        assert_eq!(pool.len(), 1);
+        let h = Handle::new("123");
+        assert_eq!(pool.len(), 2);
+        collect_garbage();
+        assert_eq!(pool.len(), 1);
+        drop(h);
+        assert_eq!(pool.len(), 1);
+        collect_garbage();
+        assert_eq!(pool.len(), 0);
+    }
+}

@@ -322,3 +322,46 @@ impl From<String> for IStr {
         Self::from_string(v)
     }
 }
+
+impl PartialEq<str> for IStr {
+    fn eq(&self, other: &str) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&str> for IStr {
+    fn eq(&self, other: &&str) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<String> for IStr {
+    fn eq(&self, other: &String) -> bool {
+        self.deref() == *other
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_1() {
+        let s = IStr::new("asd");
+        assert_eq!(s, "asd");
+    }
+
+    #[test]
+    fn test_2() {
+        let a = IStr::new("asd");
+        let b = IStr::new("asd");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_3() {
+        let a = IStr::new("asd");
+        let b = IStr::new("123");
+        assert_ne!(a, b);
+    }
+}

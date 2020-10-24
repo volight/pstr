@@ -175,3 +175,37 @@ impl<T: ?Sized> Borrow<T> for Prc<T> {
         self.data()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        let prc = Prc::from_box(Box::new(1));
+        assert_eq!(*prc, 1)
+    }
+
+    struct Foo(pub usize);
+    impl Drop for Foo {
+        fn drop(&mut self) {
+            println!("drop foo");
+        }
+    }
+
+    #[test]
+    fn test_drop() {
+        let prc = Prc::from_box(Box::new(Foo(123)));
+        drop(prc);
+    }
+
+    #[test]
+    fn test_clone() {
+        let prc = Prc::from_box(Box::new(Foo(123)));
+        let prc2 = prc.clone();
+        assert_eq!(Prc::<Foo>::strong_count(&prc2), 2);
+        drop(prc);
+        assert_eq!(Prc::<Foo>::strong_count(&prc2), 1);
+        drop(prc2);
+    }
+}

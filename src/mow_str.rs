@@ -719,3 +719,64 @@ impl From<MowStr> for IStr {
         }
     }
 }
+
+impl PartialEq<str> for MowStr {
+    fn eq(&self, other: &str) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&str> for MowStr {
+    fn eq(&self, other: &&str) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<String> for MowStr {
+    fn eq(&self, other: &String) -> bool {
+        self.deref() == *other
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_1() {
+        let s = MowStr::new("asd");
+        assert_eq!(s, "asd");
+    }
+
+    #[test]
+    fn test_2() {
+        let a = MowStr::new("asd");
+        let b = MowStr::new("asd");
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_3() {
+        let a = MowStr::new("asd");
+        let b = MowStr::new("123");
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn test_mut() {
+        let mut a = MowStr::new("asd");
+        assert!(a.is_interned());
+        a.mutdown();
+        assert!(a.is_mutable());
+    }
+
+    #[test]
+    fn test_mut_2() {
+        let mut a = MowStr::new("asd");
+        assert!(a.is_interned());
+        assert_eq!(a, "asd");
+        a.push_str("123");
+        assert!(a.is_mutable());
+        assert_eq!(a, "asd123");
+    }
+}
