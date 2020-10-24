@@ -1,17 +1,27 @@
+//! Provides some type conversion utils
+
 use crate::{IStr, MowStr};
 
+/// Type annotation
+#[doc(hidden)]
 pub unsafe trait Interned {}
+/// Type annotation
+#[doc(hidden)]
 pub unsafe trait Muterned {}
 
+/// Convert to Interning String
 pub trait Interning {
     type Outern: Interned;
 
+    /// Convert to Interning String
     fn interned(self) -> Self::Outern;
 }
 
+/// Convert to Mutable on Write Interning String
 pub trait Muterning {
     type Outern: Muterned;
 
+    /// Convert to Mutable on Write Interning String
     fn muterned(self) -> Self::Outern;
 }
 

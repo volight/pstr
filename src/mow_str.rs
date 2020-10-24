@@ -10,8 +10,8 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
     slice::SliceIndex,
-    str::{self, from_utf8, from_utf8_unchecked, FromStr, Utf8Error},
-    string::{Drain, FromUtf16Error, ParseError},
+    str::{self, FromStr},
+    string::{Drain, ParseError},
     sync::Arc,
 };
 
@@ -42,78 +42,115 @@ impl PartialEq for MowStrInteral {
     }
 }
 
-/// Mutable on Write Interning Pool String
+/// Mutable on Write Interning String  
+///
+/// It will be auto switch to mutable when do modify operate  
+///
+/// Can call `.intern()` to save into intern pool
+///
+/// # Example
+/// ```
+/// # use pstr::MowStr;
+/// let mut s = MowStr::new("hello");
+/// assert!(s.is_interned());
+///
+/// s.push_str(" ");
+/// assert!(s.is_mutable());
+///
+/// s.mutdown().push_str("world");
+/// assert_eq!(s, "hello world");
+///
+/// s.intern();
+/// assert!(s.is_interned());
+/// ```
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub struct MowStr(MowStrInteral);
 
 impl MowStr {
+    /// Create a `MowStr` from str slice  
+    ///
+    /// # Example
+    /// ```
+    /// # use pstr::MowStr;
+    /// let s = MowStr::new("hello world");
+    /// ```
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
         Self(MowStrInteral::I(IStr::new(s)))
     }
 
+    /// Create a `MowStr` from str slice with mutable  
+    ///
+    /// # Example
+    /// ```
+    /// # use pstr::MowStr;
+    /// let s = MowStr::new_mut("hello world");
+    /// assert!(s.is_mutable());
+    /// ```
     #[inline]
     pub fn new_mut(s: impl Into<String>) -> Self {
         Self(MowStrInteral::M(Some(s.into())))
     }
 
+    /// Create a new empty `MowStr` with mutable  
+    ///
+    /// # Example
+    /// ```
+    /// # use pstr::MowStr;
+    /// let s = MowStr::mut_empty();
+    /// assert!(s.is_mutable());
+    /// ```
     #[inline]
     pub fn mut_empty() -> Self {
         Self::new_mut(String::new())
     }
 
+    /// Create a new empty `MowStr` with a particular capacity and mutable  
     #[inline]
     pub fn mut_with_capacity(capacity: usize) -> Self {
         Self::new_mut(String::with_capacity(capacity))
     }
 
-    #[inline]
-    pub fn from_utf8(s: impl AsRef<[u8]>) -> Result<Self, Utf8Error> {
-        from_utf8(s.as_ref()).map(Self::new)
-    }
-
-    #[inline]
-    pub fn from_utf16(s: impl AsRef<[u16]>) -> Result<Self, FromUtf16Error> {
-        Ok(Self::from_string(String::from_utf16(s.as_ref())?))
-    }
-
+    /// Create a `MowStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
         Self::from_boxed_str(s.into_boxed_str())
     }
 
+    /// Create a `MowStr` from `String` with mutable  
     #[inline]
     pub fn from_string_mut(s: String) -> Self {
         Self(MowStrInteral::M(Some(s)))
     }
 
+    /// Create a `MowStr` from `Box<str>`  
     #[inline]
     pub fn from_boxed_str(s: Box<str>) -> Self {
         Self(MowStrInteral::I(IStr::from_boxed_str(s)))
     }
 
+    /// Create a `MowStr` from `Box<str>` with mutable  
     #[inline]
     pub fn from_boxed_str_mut(s: Box<str>) -> Self {
         Self(MowStrInteral::M(Some(s.to_string())))
     }
 
+    /// Create a `MowStr` from `IStr`  
     #[inline]
     pub fn from_istr(s: IStr) -> Self {
         Self(MowStrInteral::I(s))
     }
 
+    /// Create a `MowStr` from `IStr` with mutable  
     #[inline]
     pub fn from_istr_mut(s: IStr) -> Self {
         Self(MowStrInteral::M(Some(s.to_string())))
     }
-
-    #[inline]
-    pub unsafe fn from_utf8_unchecked(bytes: impl AsRef<[u8]>) -> Self {
-        Self::new(from_utf8_unchecked(bytes.as_ref()))
-    }
 }
 
 impl MowStr {
+    /// Save the current state to the intern pool  
+    /// Do nothing if already in the pool  
     #[inline]
     pub fn intern(&mut self) {
         let s = match &mut self.0 {
@@ -123,6 +160,8 @@ impl MowStr {
         *self = Self::from_string(s);
     }
 
+    /// Get a mutable clone of the string on the pool  
+    /// Do nothing if already mutable  
     #[inline]
     pub fn to_mut(&mut self) {
         let s = match &mut self.0 {
@@ -132,6 +171,7 @@ impl MowStr {
         *self = Self::from_string_mut(s);
     }
 
+    /// Switch to mutable and return a mutable reference  
     #[inline]
     pub fn mutdown(&mut self) -> &mut String {
         self.to_mut();
@@ -141,11 +181,48 @@ impl MowStr {
         }
     }
 
+    /// Do nothing if already mutable  
+    #[inline]
+    pub fn to_mut_by(&mut self, f: impl FnOnce(&mut IStr) -> String) {
+        let s = match &mut self.0 {
+            MowStrInteral::I(v) => f(v),
+            MowStrInteral::M(_) => return,
+        };
+        *self = Self::from_string_mut(s);
+    }
+
+    /// Swap internal String  
+    /// Return `None` if self is interned  
+    pub fn swap_mut(&mut self, s: String) -> Option<String> {
+        let r = match &mut self.0 {
+            MowStrInteral::I(_) => None,
+            MowStrInteral::M(s) => Some(s.take().unwrap()),
+        };
+        *self = Self::from_string_mut(s);
+        r
+    }
+
+    /// Swap internal String when self is mutable  
+    /// Do nothing if self is interned  
+    /// Return `None` if self is interned  
+    pub fn try_swap_mut(&mut self, s: String) -> Option<String> {
+        let r = match &mut self.0 {
+            MowStrInteral::I(_) => None,
+            MowStrInteral::M(s) => Some(s.take().unwrap()),
+        };
+        if r.is_some() {
+            *self = Self::from_string_mut(s);
+        }
+        r
+    }
+
+    /// Check if it is in intern pool  
     #[inline]
     pub fn is_interned(&self) -> bool {
         matches!(&self.0, MowStrInteral::I(_))
     }
 
+    /// Check if it is mutable  
     #[inline]
     pub fn is_mutable(&self) -> bool {
         matches!(&self.0, MowStrInteral::M(_))
@@ -153,41 +230,49 @@ impl MowStr {
 }
 
 impl MowStr {
+    /// Get `&str`  
     #[inline]
     pub fn ref_str(&self) -> &str {
         self.deref()
     }
 
+    /// Get `&mut str`  
     #[inline]
     pub fn mut_str(&mut self) -> &mut str {
         self.as_mut()
     }
 
+    /// Get `&mut String`  
     #[inline]
     pub fn mut_string(&mut self) -> &mut String {
         self.as_mut()
     }
 
+    /// Extracts a string slice containing the entire `MowStr`
     #[inline]
     pub fn as_str(&self) -> &str {
         self.deref()
     }
 
+    /// Switch to mutable and returns a mutable string slice.
     #[inline]
     pub fn as_mut_str(&mut self) -> &mut str {
         self.mut_str()
     }
 
+    /// Switch to mutable and returns a mutable `String` reference
     #[inline]
     pub fn as_mut_string(&mut self) -> &mut String {
         self.mut_string()
     }
 
+    /// Switch to mutable and returns a mutable `Vec<u8>` reference
     #[inline]
     pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         self.mutdown().as_mut_vec()
     }
 
+    /// Convert to `String`  
     #[inline]
     pub fn into_string(self) -> String {
         match self.0 {
@@ -196,6 +281,7 @@ impl MowStr {
         }
     }
 
+    /// Convert to `Box<str>`  
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         match self.0 {
@@ -206,76 +292,181 @@ impl MowStr {
 }
 
 impl MowStr {
+    /// Appends a given string slice onto the end of this `MowStr`  
     #[inline]
     pub fn push_str(&mut self, string: impl AsRef<str>) {
         self.mutdown().push_str(string.as_ref())
     }
 
+    /// Ensures that this `MowStr`'s capacity is at least `additional` bytes larger than its length.  
+    ///
+    /// The capacity may be increased by more than `additional` bytes if it chooses, to prevent frequent reallocations.  
+    ///
+    /// If you do not want this "at least" behavior, see the [`reserve_exact`] method.
+    /// 
+    /// # Panics
+    /// 
+    /// Panics if the new capacity overflows [`usize`].
+    ///
+    /// [`reserve_exact`]: MowStr::reserve_exact
     #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.mutdown().reserve(additional)
     }
 
+    /// Ensures that this `MowStr`'s capacity is `additional` bytes
+    /// larger than its length.
+    ///
+    /// Consider using the [`reserve`] method unless you absolutely know
+    /// better than the allocator.
+    ///
+    /// [`reserve`]: MowStr::reserve
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new capacity overflows `usize`.
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.mutdown().reserve_exact(additional)
     }
 
+    /// Shrinks the capacity of this `MowStr` to match its length.
     #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.mutdown().shrink_to_fit()
     }
 
+    /// Appends the given [`char`] to the end of this `MowStr`.
     #[inline]
     pub fn push(&mut self, ch: char) {
         self.mutdown().push(ch)
     }
 
+    /// Shortens this `MowStr` to the specified length.
+    ///
+    /// If `new_len` is greater than the string's current length, this has no
+    /// effect.
+    ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the string
+    ///
+    /// # Panics
+    ///
+    /// Panics if `new_len` does not lie on a [`char`] boundary.
     #[inline]
     pub fn truncate(&mut self, new_len: usize) {
         self.mutdown().truncate(new_len)
     }
 
+    /// Removes the last character from the string buffer and returns it.
+    ///
+    /// Returns [`None`] if this `MowStr` is empty.
     #[inline]
     pub fn pop(&mut self) -> Option<char> {
         self.mutdown().pop()
     }
 
+    /// Removes a [`char`] from this `MowStr` at a byte position and returns it.
+    ///
+    /// This is an *O*(*n*) operation, as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than or equal to the `MowStr`'s length,
+    /// or if it does not lie on a [`char`] boundary.
     #[inline]
     pub fn remove(&mut self, idx: usize) -> char {
         self.mutdown().remove(idx)
     }
 
+    /// Retains only the characters specified by the predicate.
+    ///
+    /// In other words, remove all characters `c` such that `f(c)` returns `false`.
+    /// This method operates in place, visiting each character exactly once in the
+    /// original order, and preserves the order of the retained characters.
     #[inline]
     pub fn retain<F: FnMut(char) -> bool>(&mut self, f: F) {
         self.mutdown().retain(f)
     }
 
+    /// Inserts a character into this `MowStr` at a byte position.
+    ///
+    /// This is an *O*(*n*) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the `MowStr`'s length, or if it does not
+    /// lie on a [`char`] boundary.
     #[inline]
     pub fn insert(&mut self, idx: usize, ch: char) {
         self.mutdown().insert(idx, ch)
     }
 
+    /// Inserts a string slice into this `MowStr` at a byte position.
+    ///
+    /// This is an *O*(*n*) operation as it requires copying every element in the
+    /// buffer.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `idx` is larger than the `MowStr`'s length, or if it does not
+    /// lie on a [`char`] boundary.
     #[inline]
     pub fn insert_str(&mut self, idx: usize, string: &str) {
         self.mutdown().insert_str(idx, string)
     }
 
+    /// Splits the string into two at the given index.
+    ///
+    /// Returns a newly allocated `MowStr`. `self` contains bytes `[0, at)`, and
+    /// the returned `MowStr` contains bytes `[at, len)`. `at` must be on the
+    /// boundary of a UTF-8 code point.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at` is not on a `UTF-8` code point boundary, or if it is beyond the last
+    /// code point of the string.
     #[inline]
     pub fn split_off(&mut self, at: usize) -> MowStr {
         Self::from_string_mut(self.mutdown().split_off(at))
     }
 
+    /// Truncates this `MowStr`, removing all contents.
+    ///
+    /// While this means the `MowStr` will have a length of zero, it does not
+    /// touch its capacity.
     #[inline]
     pub fn clear(&mut self) {
         self.mutdown().clear()
     }
 
+    /// Creates a draining iterator that removes the specified range in the `MowStr`
+    /// and yields the removed `chars`.
+    ///
+    /// Note: The element range is removed even if the iterator is not
+    /// consumed until the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point do not lie on a [`char`]
+    /// boundary, or if they're out of bounds.
     #[inline]
     pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> Drain<'_> {
         self.mutdown().drain(range)
     }
 
+    /// Removes the specified range in the string,
+    /// and replaces it with the given string.
+    /// The given string doesn't need to be the same length as the range.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the starting point or end point do not lie on a [`char`]
+    /// boundary, or if they're out of bounds.
     #[inline]
     pub fn replace_range<R: RangeBounds<usize>>(&mut self, range: R, replace_with: &str) {
         self.mutdown().replace_range(range, replace_with)

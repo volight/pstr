@@ -9,60 +9,63 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
     slice::SliceIndex,
-    str::{self, from_utf8, from_utf8_unchecked, FromStr, Utf8Error},
-    string::{FromUtf16Error, ParseError},
+    str::{self, FromStr},
+    string::ParseError,
     sync::Arc,
 };
 
 use crate::{intern::Interned, pool::Handle, MowStr};
 
-/// Immutable Interning Pool String
+/// Immutable Interning String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct IStr(Handle);
 
 impl IStr {
+    /// Create a `IStr` from str slice  
+    ///
+    /// # Example
+    /// ```
+    /// # use pstr::IStr;
+    /// let s = IStr::new("hello world");
+    /// ```
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
         Self(Handle::new(s.as_ref()))
     }
 
-    #[inline]
-    pub fn from_utf8(s: impl AsRef<[u8]>) -> Result<Self, Utf8Error> {
-        from_utf8(s.as_ref()).map(Self::new)
-    }
-
-    #[inline]
-    pub fn from_utf16(s: impl AsRef<[u16]>) -> Result<Self, FromUtf16Error> {
-        Ok(Self::from_string(String::from_utf16(s.as_ref())?))
-    }
-
+    /// Create a `IStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
         Self::from_boxed_str(s.into_boxed_str())
     }
 
+    /// Create a `IStr` from `Box<str>`  
     #[inline]
     pub fn from_boxed_str(s: Box<str>) -> Self {
         Self(Handle::from_box(s.into()))
     }
 
+    /// Create a `IStr` from `MowStr`  
     #[inline]
-    pub unsafe fn from_utf8_unchecked(bytes: impl AsRef<[u8]>) -> Self {
-        Self::new(from_utf8_unchecked(bytes.as_ref()))
+    pub fn from_mow(s: MowStr) -> Self {
+        s.into()
     }
 }
 
 impl IStr {
+    /// Extracts a string slice containing the entire `IStr`
     #[inline]
     pub fn as_str(&self) -> &str {
         self.deref()
     }
 
+    /// Clone a boxed string slice containing the entire `IStr`
     #[inline]
     pub fn into_boxed_str(&self) -> Box<str> {
         self.deref().into()
     }
 
+    /// Convert to `MowStr`  
     #[inline]
     pub fn into_mut(&self) -> MowStr {
         MowStr::from(self.clone())

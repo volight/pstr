@@ -1,3 +1,5 @@
+//! The String Intern Pool  
+
 use std::sync::Arc;
 
 use dashmap::DashSet;
@@ -54,6 +56,7 @@ impl PartialEq for Handle {
     }
 }
 
+/// Delete all interning string with reference count == 1 in the pool
 pub fn collect_garbage() {
     let pool = POOL.clone();
     pool.retain(|prc| Prc::<str>::strong_count(prc) > 1)
