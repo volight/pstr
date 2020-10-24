@@ -14,7 +14,7 @@ use std::{
     sync::Arc,
 };
 
-use crate::{pool::Handle, Interned, MowStr};
+use crate::{intern::Interned, pool::Handle, MowStr};
 
 /// Immutable Interning Pool String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]

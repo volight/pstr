@@ -15,7 +15,10 @@ use std::{
     sync::Arc,
 };
 
-use crate::{IStr, Interned, Muterned};
+use crate::{
+    intern::{Interned, Muterned},
+    IStr,
+};
 
 #[derive(Debug, Eq, Ord, PartialOrd)]
 enum MowStrInteral {
