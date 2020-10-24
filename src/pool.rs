@@ -1,47 +1,54 @@
-use std::{collections::HashMap, sync::Mutex};
+use std::sync::Arc;
 
+use dashmap::DashSet;
 use once_cell::sync::Lazy;
 
 use crate::prc::Prc;
 
-static POOL: Lazy<Mutex<HashMap<u64, Prc>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static POOL: Lazy<Arc<DashSet<Prc<str>>>> = Lazy::new(|| Arc::new(DashSet::new()));
 
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd)]
-pub struct Handle(Prc);
+pub(crate) struct Handle(Prc<str>);
 
 impl Handle {
     #[inline]
-    pub fn new(slice: &[u8]) -> Self {
-        let hash = Prc::make_hash(slice);
-        let mut pool = POOL.lock().unwrap();
-        match pool.get(&hash) {
-            Some(v) => Self(v.clone()),
+    pub fn new(slice: &str) -> Self {
+        let pool = POOL.clone();
+        match pool.get(slice).map(|v| v.key().clone()) {
+            Some(v) => Self(v),
             None => {
-                let s = Self(Prc::from_slice(slice));
-                let v = s.0.clone();
-                pool.insert(hash, v);
-                s
+                let prc = Prc::from_box(Box::from(slice));
+                if pool.insert(Clone::clone(&prc)) {
+                    Self(prc)
+                } else {
+                    Self(pool.get(prc.as_ref()).unwrap().key().clone())
+                }
+            }
+        }
+    }
+    #[inline]
+    pub fn from_box(slice: Box<str>) -> Self {
+        let pool = POOL.clone();
+        match pool.get(slice.as_ref()).map(|v| v.key().clone()) {
+            Some(v) => Self(v),
+            None => {
+                let prc = Prc::from_box(slice);
+                if pool.insert(prc.clone()) {
+                    Self(prc)
+                } else {
+                    Self(pool.get(prc.as_ref()).unwrap().key().clone())
+                }
             }
         }
     }
 
     #[inline]
-    pub fn from_box(slice: Box<[u8]>) -> Self {
-        let hash = Prc::make_hash(&*slice);
-        let mut pool = POOL.lock().unwrap();
-        match pool.get(&hash) {
-            Some(v) => Self(v.clone()),
-            None => {
-                let s = Self(Prc::from_box(slice));
-                let v = s.0.clone();
-                pool.insert(hash, v);
-                s
-            }
-        }
-    }
-
-    #[inline]
-    pub fn get(&self) -> &[u8] {
+    pub fn get(&self) -> &str {
         self.0.as_ref()
     }
+}
+
+pub fn collect_garbage() {
+    let pool = POOL.clone();
+    pool.retain(|prc| Prc::<str>::strong_count(prc) > 1)
 }

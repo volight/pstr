@@ -23,7 +23,7 @@ pub struct IStr(Handle);
 impl IStr {
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
-        Self(Handle::new(s.as_ref().as_bytes()))
+        Self(Handle::new(s.as_ref()))
     }
 
     #[inline]
@@ -92,14 +92,14 @@ impl FromStr for IStr {
 impl AsRef<[u8]> for IStr {
     #[inline]
     fn as_ref(&self) -> &[u8] {
-        self.0.get()
+        self.deref().as_bytes()
     }
 }
 
 impl AsRef<str> for IStr {
     #[inline]
     fn as_ref(&self) -> &str {
-        unsafe { str::from_utf8_unchecked(self.0.get()) }
+        self.0.get()
     }
 }
 
