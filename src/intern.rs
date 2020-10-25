@@ -78,7 +78,7 @@ impl Muterning for Box<str> {
     type Outern = MowStr;
 
     fn muterned(self) -> Self::Outern {
-        MowStr::from_boxed_str_mut(self)
+        MowStr::from_string_mut(self.to_string())
     }
 }
 
@@ -94,7 +94,7 @@ impl Muterning for IStr {
     type Outern = MowStr;
 
     fn muterned(self) -> Self::Outern {
-        MowStr::from_istr_mut(self)
+        MowStr::from_string_mut(self.to_string())
     }
 }
 

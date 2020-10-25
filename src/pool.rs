@@ -1,36 +1,24 @@
 //! The String Intern Pool  
 
-use std::sync::RwLock;
+use std::sync::{Arc, RwLock};
 
 use dashmap::DashSet;
 use once_cell::sync::Lazy;
 
-use crate::prc::Prc;
-
-static POOL: Lazy<DashSet<Prc<str>>> = Lazy::new(|| DashSet::new());
+static POOL: Lazy<DashSet<Arc<str>>> = Lazy::new(|| DashSet::new());
 static GC_LOCK: Lazy<RwLock<()>> = Lazy::new(|| RwLock::new(()));
 
 #[derive(Debug, Clone, Eq, Ord, PartialOrd)]
-pub(crate) struct Handle(Prc<str>);
+pub(crate) struct Handle(Arc<str>);
 
 impl Handle {
     #[inline]
-    pub fn new(s: &str) -> Self {
-        match POOL.get(s).map(|v| v.key().clone()) {
-            Some(v) => Self(v),
-            None => {
-                let prc = Prc::from_box(Box::from(s));
-                Self(insert_prc(prc))
-            }
-        }
-    }
-    #[inline]
-    pub fn from_box(s: Box<str>) -> Self {
+    pub fn new<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
         match POOL.get(s.as_ref()).map(|v| v.key().clone()) {
             Some(v) => Self(v),
             None => {
-                let prc = Prc::from_box(s);
-                Self(insert_prc(prc))
+                let arc = to_arc(s);
+                Self(insert_arc(arc))
             }
         }
     }
@@ -42,38 +30,38 @@ impl Handle {
 }
 
 #[inline]
-fn insert_prc(prc: Prc<str>) -> Prc<str> {
-    if POOL.insert(Clone::clone(&prc)) {
-        prc
+fn insert_arc(arc: Arc<str>) -> Arc<str> {
+    if POOL.insert(Clone::clone(&arc)) {
+        arc
     } else {
         #[cold]
-        fn when_failed(prc: Prc<str>) -> Prc<str> {
+        fn when_failed(arc: Arc<str>) -> Arc<str> {
             let lock = GC_LOCK.read();
-            let r = match POOL.get(prc.as_ref()).map(|v| v.key().clone()) {
+            let r = match POOL.get(arc.as_ref()).map(|v| v.key().clone()) {
                 Some(v) => v,
                 None => {
-                    let s = POOL.insert(Clone::clone(&prc));
+                    let s = POOL.insert(Clone::clone(&arc));
                     assert!(s);
-                    prc
+                    arc
                 }
             };
             drop(lock);
             r
         }
-        when_failed(prc)
+        when_failed(arc)
     }
 }
 
 impl PartialEq for Handle {
     fn eq(&self, other: &Self) -> bool {
-        self.0.inner_ptr_usize() == other.0.inner_ptr_usize()
+        self.0.as_ptr() == other.0.as_ptr()
     }
 }
 
 /// Delete all interning string with reference count == 1 in the pool
 pub fn collect_garbage() {
     let lock = GC_LOCK.write();
-    POOL.retain(|prc| Prc::<str>::strong_count(prc) > 1);
+    POOL.retain(|arc| Arc::<str>::strong_count(arc) > 1);
     drop(lock);
 }
 
@@ -83,14 +71,14 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let h = Handle::new("asd");
+        let h = Handle::new("asd", Arc::from);
         assert_eq!(h.get(), "asd");
     }
 
     #[test]
     fn test_same() {
-        let h1 = Handle::new("asd");
-        let h2 = Handle::new("asd");
+        let h1 = Handle::new("asd", Arc::from);
+        let h2 = Handle::new("asd", Arc::from);
         assert_eq!(h1, h2);
         assert_eq!(h1.get(), "asd");
         assert_eq!(h2.get(), "asd");
@@ -98,8 +86,8 @@ mod tests {
 
     #[test]
     fn test_not_same() {
-        let h1 = Handle::new("asd");
-        let h2 = Handle::new("123");
+        let h1 = Handle::new("asd", Arc::from);
+        let h2 = Handle::new("123", Arc::from);
         assert_ne!(h1, h2);
         assert_eq!(h1.get(), "asd");
         assert_eq!(h2.get(), "123");
@@ -109,9 +97,9 @@ mod tests {
     #[ignore]
     fn test_pool_gc() {
         assert_eq!(POOL.len(), 0);
-        Handle::new("asd");
+        Handle::new("asd", Arc::from);
         assert_eq!(POOL.len(), 1);
-        let h = Handle::new("123");
+        let h = Handle::new("123", Arc::from);
         assert_eq!(POOL.len(), 2);
         collect_garbage();
         assert_eq!(POOL.len(), 1);
@@ -129,10 +117,10 @@ mod tests {
             .into_iter()
             .map(|i| {
                 spawn(move || {
-                    let a = Handle::from_box(i.to_string().into_boxed_str());
+                    let a = Handle::new(i.to_string(), Arc::from);
                     let v: Vec<_> = (0..100)
                         .into_iter()
-                        .map(|_| spawn(move || Handle::from_box(i.to_string().into_boxed_str())))
+                        .map(|_| spawn(move || Handle::new(i.to_string(), Arc::from)))
                         .collect();
                     for b in v.into_iter() {
                         assert_eq!(a, b.join().unwrap());
@@ -156,7 +144,7 @@ mod tests {
                 spawn(move || {
                     let v: Vec<_> = (0..100)
                         .into_iter()
-                        .map(|_| spawn(move || Handle::from_box(i.to_string().into_boxed_str())))
+                        .map(|_| spawn(move || Handle::new(i.to_string(), Arc::from)))
                         .collect();
                     for b in v.into_iter() {
                         assert_eq!(b.join().unwrap().get(), i.to_string());

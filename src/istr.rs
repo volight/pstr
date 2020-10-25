@@ -1,5 +1,6 @@
 use std::{
     borrow::{Borrow, Cow},
+    convert::identity,
     error::Error,
     ffi::{OsStr, OsString},
     hash::{self, Hash},
@@ -30,25 +31,43 @@ impl IStr {
     /// ```
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
-        Self(Handle::new(s.as_ref()))
+        Self(Handle::new(s.as_ref(), Arc::from))
     }
 
     /// Create a `IStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
-        Self::from_boxed_str(s.into_boxed_str())
+        Self(Handle::new(s, Arc::from))
     }
 
     /// Create a `IStr` from `Box<str>`  
     #[inline]
-    pub fn from_boxed_str(s: Box<str>) -> Self {
-        Self(Handle::from_box(s.into()))
+    pub fn from_boxed(s: Box<str>) -> Self {
+        Self(Handle::new(s, Arc::from))
+    }
+
+    /// Create a `IStr` from `Arc<str>`  
+    #[inline]
+    pub fn from_arc(s: Arc<str>) -> Self {
+        Self(Handle::new(s, identity))
+    }
+
+    /// Create a `IStr` from `Rc<str>`  
+    #[inline]
+    pub fn from_rc(s: Rc<str>) -> Self {
+        Self(Handle::new(s, |s| Arc::from(s.to_string())))
     }
 
     /// Create a `IStr` from `MowStr`  
     #[inline]
     pub fn from_mow(s: MowStr) -> Self {
         s.into()
+    }
+
+    /// Create a `IStr` from custom fn  
+    #[inline]
+    pub fn from_to_arc<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
+        Self(Handle::new(s, to_arc))
     }
 }
 
@@ -175,7 +194,21 @@ impl From<char> for IStr {
 impl From<Box<str>> for IStr {
     #[inline]
     fn from(s: Box<str>) -> Self {
-        Self::from_boxed_str(s)
+        Self::from_boxed(s)
+    }
+}
+
+impl From<Arc<str>> for IStr {
+    #[inline]
+    fn from(s: Arc<str>) -> Self {
+        Self::from_arc(s)
+    }
+}
+
+impl From<Rc<str>> for IStr {
+    #[inline]
+    fn from(s: Rc<str>) -> Self {
+        Self::from_rc(s)
     }
 }
 

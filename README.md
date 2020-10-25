@@ -7,12 +7,12 @@
 Internal use of [DashMap](https://crates.io/crates/dashmap) for concurrent support
 
 # Examples
-- [`IStr`](https://docs.rs/pstr/0.2.3/pstr/struct.IStr.html)
+- [`IStr`](https://docs.rs/pstr/0.3.0/pstr/struct.IStr.html)
 ```rust
 use pstr::IStr;
 let s = IStr::new("hello world");
 ```
-- [`MowStr`](https://docs.rs/pstr/0.2.3/pstr/struct.MowStr.html)
+- [`MowStr`](https://docs.rs/pstr/0.3.0/pstr/struct.MowStr.html)
 ```rust
 use pstr::MowStr;
 let mut s = MowStr::new("hello");

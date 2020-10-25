@@ -114,7 +114,7 @@ impl MowStr {
     /// Create a `MowStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
-        Self::from_boxed_str(s.into_boxed_str())
+        Self(MowStrInteral::I(IStr::from_string(s)))
     }
 
     /// Create a `MowStr` from `String` with mutable  
@@ -125,14 +125,20 @@ impl MowStr {
 
     /// Create a `MowStr` from `Box<str>`  
     #[inline]
-    pub fn from_boxed_str(s: Box<str>) -> Self {
-        Self(MowStrInteral::I(IStr::from_boxed_str(s)))
+    pub fn from_boxed(s: Box<str>) -> Self {
+        Self(MowStrInteral::I(IStr::from_boxed(s)))
     }
 
-    /// Create a `MowStr` from `Box<str>` with mutable  
+    /// Create a `MowStr` from `Arc<str>`  
     #[inline]
-    pub fn from_boxed_str_mut(s: Box<str>) -> Self {
-        Self(MowStrInteral::M(Some(s.to_string())))
+    pub fn from_arc(s: Arc<str>) -> Self {
+        Self(MowStrInteral::I(IStr::from_arc(s)))
+    }
+
+    /// Create a `MowStr` from `Rc<str>`  
+    #[inline]
+    pub fn from_rc(s: Rc<str>) -> Self {
+        Self(MowStrInteral::I(IStr::from_rc(s)))
     }
 
     /// Create a `MowStr` from `IStr`  
@@ -141,10 +147,10 @@ impl MowStr {
         Self(MowStrInteral::I(s))
     }
 
-    /// Create a `MowStr` from `IStr` with mutable  
+    /// Create a `MowStr` from custom fn  
     #[inline]
-    pub fn from_istr_mut(s: IStr) -> Self {
-        Self(MowStrInteral::M(Some(s.to_string())))
+    pub fn from_to_arc<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
+        Self(MowStrInteral::I(IStr::from_to_arc(s, to_arc)))
     }
 }
 
@@ -303,9 +309,9 @@ impl MowStr {
     /// The capacity may be increased by more than `additional` bytes if it chooses, to prevent frequent reallocations.  
     ///
     /// If you do not want this "at least" behavior, see the [`reserve_exact`] method.
-    /// 
+    ///
     /// # Panics
-    /// 
+    ///
     /// Panics if the new capacity overflows [`usize`].
     ///
     /// [`reserve_exact`]: MowStr::reserve_exact
@@ -700,7 +706,21 @@ impl From<String> for MowStr {
 impl From<Box<str>> for MowStr {
     #[inline]
     fn from(s: Box<str>) -> Self {
-        Self::from_boxed_str(s)
+        Self::from_boxed(s)
+    }
+}
+
+impl From<Arc<str>> for MowStr {
+    #[inline]
+    fn from(s: Arc<str>) -> Self {
+        Self::from_arc(s)
+    }
+}
+
+impl From<Rc<str>> for MowStr {
+    #[inline]
+    fn from(s: Rc<str>) -> Self {
+        Self::from_rc(s)
     }
 }
 
