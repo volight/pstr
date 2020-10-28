@@ -15,11 +15,11 @@ use std::{
     sync::Arc,
 };
 
-use crate::{intern::Interned, pool::Handle, MowStr};
+use crate::{intern::Interned, pool::{Intern, STR_POOL}, MowStr};
 
 /// Immutable Interning String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct IStr(Handle);
+pub struct IStr(Intern<str>);
 
 impl IStr {
     /// Create a `IStr` from str slice  
@@ -31,31 +31,31 @@ impl IStr {
     /// ```
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
-        Self(Handle::new(s.as_ref(), Arc::from))
+        Self(STR_POOL.intern(s.as_ref(), Arc::from))
     }
 
     /// Create a `IStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
-        Self(Handle::new(s, Arc::from))
+        Self(STR_POOL.intern(s, Arc::from))
     }
 
     /// Create a `IStr` from `Box<str>`  
     #[inline]
     pub fn from_boxed(s: Box<str>) -> Self {
-        Self(Handle::new(s, Arc::from))
+        Self(STR_POOL.intern(s, Arc::from))
     }
 
     /// Create a `IStr` from `Arc<str>`  
     #[inline]
     pub fn from_arc(s: Arc<str>) -> Self {
-        Self(Handle::new(s, identity))
+        Self(STR_POOL.intern(s, identity))
     }
 
     /// Create a `IStr` from `Rc<str>`  
     #[inline]
     pub fn from_rc(s: Rc<str>) -> Self {
-        Self(Handle::new(s, |s| Arc::from(s.to_string())))
+        Self(STR_POOL.intern(s, |s| Arc::from(s.to_string())))
     }
 
     /// Create a `IStr` from `MowStr`  
@@ -67,7 +67,7 @@ impl IStr {
     /// Create a `IStr` from custom fn  
     #[inline]
     pub fn from_to_arc<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
-        Self(Handle::new(s, to_arc))
+        Self(STR_POOL.intern(s, to_arc))
     }
 }
 

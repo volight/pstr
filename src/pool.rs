@@ -1,68 +1,109 @@
-//! The String Intern Pool  
+//! The Intern Pool  
 
-use std::sync::{Arc, RwLock};
+use std::{ops::Deref, hash::Hash, sync::{Arc, RwLock}};
 
 use dashmap::DashSet;
 use once_cell::sync::Lazy;
 
-static POOL: Lazy<DashSet<Arc<str>>> = Lazy::new(|| DashSet::new());
-static GC_LOCK: Lazy<RwLock<()>> = Lazy::new(|| RwLock::new(()));
+/// The String Intern Pool  
+pub static STR_POOL: Lazy<Pool<str>> = Lazy::new(|| Pool::new());
 
-#[derive(Debug, Clone, Eq, Ord, PartialOrd)]
-pub(crate) struct Handle(Arc<str>);
+/// The Intern Pool  
+#[derive(Debug)]
+pub struct Pool<T: Eq + Hash + ?Sized> {
+    pool: DashSet<Arc<T>>,
+    gc_lock: RwLock<()>,
+}
 
-impl Handle {
+impl<T: Eq + Hash + ?Sized> Pool<T> {
+    /// New a empty intern pool
     #[inline]
-    pub fn new<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
-        match POOL.get(s.as_ref()).map(|v| v.key().clone()) {
-            Some(v) => Self(v),
+    pub fn new() -> Self {
+        Self {
+            pool: DashSet::new(),
+            gc_lock: RwLock::new(()),
+        }
+    }
+}
+
+impl<T: Eq + Hash + ?Sized> Pool<T> {
+    /// Make a intern
+    #[inline]
+    pub fn intern<A: AsRef<T>>(&self, a: A, to_arc: impl FnOnce(A) -> Arc<T>) -> Intern<T> {
+        match self.pool.get(a.as_ref()).map(|v| v.key().clone()) {
+            Some(v) => Intern(v),
             None => {
-                let arc = to_arc(s);
-                Self(insert_arc(arc))
+                let arc = to_arc(a);
+                Intern(self.insert_arc(arc))
             }
         }
     }
 
     #[inline]
-    pub fn get(&self) -> &str {
+    fn insert_arc(&self, arc: Arc<T>) -> Arc<T> {
+        if self.pool.insert(Clone::clone(&arc)) {
+            arc
+        } else {
+            self.when_failed(arc)
+        }
+    }
+
+    #[cold]
+    fn when_failed(&self, arc: Arc<T>) -> Arc<T> {
+        let lock = self.gc_lock.read();
+        let r = match self.pool.get(arc.as_ref()).map(|v| v.key().clone()) {
+            Some(v) => v,
+            None => {
+                let s = self.pool.insert(Clone::clone(&arc));
+                assert!(s);
+                arc
+            }
+        };
+        drop(lock);
+        r
+    }
+}
+
+impl<T: Eq + Hash + ?Sized> Pool<T> {
+    /// Delete all interning string with reference count == 1 in the pool
+    pub fn collect_garbage(&self) {
+        let lock = self.gc_lock.write();
+        self.pool.retain(|arc| Arc::<T>::strong_count(arc) > 1);
+        drop(lock);
+    }
+}
+
+/// Intern Ptr  
+#[derive(Debug, Eq, Ord, PartialOrd)]
+pub struct Intern<T: ?Sized>(Arc<T>);
+
+impl<T: ?Sized> Intern<T> {
+    /// Get target ref
+    #[inline]
+    pub fn get(&self) -> &T {
         self.0.as_ref()
     }
 }
 
-#[inline]
-fn insert_arc(arc: Arc<str>) -> Arc<str> {
-    if POOL.insert(Clone::clone(&arc)) {
-        arc
-    } else {
-        #[cold]
-        fn when_failed(arc: Arc<str>) -> Arc<str> {
-            let lock = GC_LOCK.read();
-            let r = match POOL.get(arc.as_ref()).map(|v| v.key().clone()) {
-                Some(v) => v,
-                None => {
-                    let s = POOL.insert(Clone::clone(&arc));
-                    assert!(s);
-                    arc
-                }
-            };
-            drop(lock);
-            r
-        }
-        when_failed(arc)
-    }
-}
-
-impl PartialEq for Handle {
+impl<T: ?Sized> PartialEq for Intern<T> {
     fn eq(&self, other: &Self) -> bool {
-        self.0.as_ptr() == other.0.as_ptr()
+        std::sync::Arc::<T>::as_ptr(&self.0) == std::sync::Arc::<T>::as_ptr(&other.0)
     }
 }
 
-/// Delete all interning string with reference count == 1 in the pool
-pub fn collect_garbage() {
-    let lock = GC_LOCK.write();
-    POOL.retain(|arc| Arc::<str>::strong_count(arc) > 1);
-    drop(lock);
+impl<T: ?Sized> Clone for  Intern<T> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
+
+impl<T: ?Sized> Deref for  Intern<T> {
+    type Target = T;
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
 }
 
 #[cfg(test)]
@@ -71,14 +112,14 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let h = Handle::new("asd", Arc::from);
+        let h = STR_POOL.intern("asd", Arc::from);
         assert_eq!(h.get(), "asd");
     }
 
     #[test]
     fn test_same() {
-        let h1 = Handle::new("asd", Arc::from);
-        let h2 = Handle::new("asd", Arc::from);
+        let h1 = STR_POOL.intern("asd", Arc::from);
+        let h2 = STR_POOL.intern("asd", Arc::from);
         assert_eq!(h1, h2);
         assert_eq!(h1.get(), "asd");
         assert_eq!(h2.get(), "asd");
@@ -86,8 +127,8 @@ mod tests {
 
     #[test]
     fn test_not_same() {
-        let h1 = Handle::new("asd", Arc::from);
-        let h2 = Handle::new("123", Arc::from);
+        let h1 = STR_POOL.intern("asd", Arc::from);
+        let h2 = STR_POOL.intern("123", Arc::from);
         assert_ne!(h1, h2);
         assert_eq!(h1.get(), "asd");
         assert_eq!(h2.get(), "123");
@@ -96,17 +137,17 @@ mod tests {
     #[test]
     #[ignore]
     fn test_pool_gc() {
-        assert_eq!(POOL.len(), 0);
-        Handle::new("asd", Arc::from);
-        assert_eq!(POOL.len(), 1);
-        let h = Handle::new("123", Arc::from);
-        assert_eq!(POOL.len(), 2);
-        collect_garbage();
-        assert_eq!(POOL.len(), 1);
+        assert_eq!(STR_POOL.pool.len(), 0);
+        STR_POOL.intern("asd", Arc::from);
+        assert_eq!(STR_POOL.pool.len(), 1);
+        let h = STR_POOL.intern("123", Arc::from);
+        assert_eq!(STR_POOL.pool.len(), 2);
+        STR_POOL.collect_garbage();
+        assert_eq!(STR_POOL.pool.len(), 1);
         drop(h);
-        assert_eq!(POOL.len(), 1);
-        collect_garbage();
-        assert_eq!(POOL.len(), 0);
+        assert_eq!(STR_POOL.pool.len(), 1);
+        STR_POOL.collect_garbage();
+        assert_eq!(STR_POOL.pool.len(), 0);
     }
 
     #[test]
@@ -117,10 +158,10 @@ mod tests {
             .into_iter()
             .map(|i| {
                 spawn(move || {
-                    let a = Handle::new(i.to_string(), Arc::from);
+                    let a = STR_POOL.intern(i.to_string(), Arc::from);
                     let v: Vec<_> = (0..100)
                         .into_iter()
-                        .map(|_| spawn(move || Handle::new(i.to_string(), Arc::from)))
+                        .map(|_| spawn(move || STR_POOL.intern(i.to_string(), Arc::from)))
                         .collect();
                     for b in v.into_iter() {
                         assert_eq!(a, b.join().unwrap());
@@ -144,7 +185,7 @@ mod tests {
                 spawn(move || {
                     let v: Vec<_> = (0..100)
                         .into_iter()
-                        .map(|_| spawn(move || Handle::new(i.to_string(), Arc::from)))
+                        .map(|_| spawn(move || STR_POOL.intern(i.to_string(), Arc::from)))
                         .collect();
                     for b in v.into_iter() {
                         assert_eq!(b.join().unwrap().get(), i.to_string());
@@ -157,7 +198,7 @@ mod tests {
                         .into_iter()
                         .map(|_| {
                             spawn(move || {
-                                collect_garbage();
+                                STR_POOL.collect_garbage();
                             })
                         })
                         .collect();
