@@ -3,6 +3,7 @@
 ![Rust](https://github.com/volight/pstr/workflows/Rust/badge.svg)
 [![version](https://img.shields.io/crates/v/pstr)](https://crates.io/crates/pstr)
 [![documentation](https://docs.rs/pstr/badge.svg)](https://docs.rs/pstr)
+![LICENSE](https://img.shields.io/crates/l/pstr)
 
 Internal use of [DashMap](https://crates.io/crates/dashmap) for concurrent support
 
