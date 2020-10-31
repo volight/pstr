@@ -2,7 +2,7 @@
 
 use std::{
     borrow::Borrow,
-    ffi::{CStr, OsStr},
+    ffi::OsStr,
     hash::Hash,
     ops::Deref,
     sync::{Arc, RwLock},
@@ -16,9 +16,6 @@ pub static STR_POOL: Lazy<Pool<str>> = Lazy::new(|| Pool::new());
 
 /// The OsString Intern Pool  
 pub static OS_STR_POOL: Lazy<Pool<OsStr>> = Lazy::new(|| Pool::new());
-
-/// The CString Intern Pool  
-pub static C_STR_POOL: Lazy<Pool<CStr>> = Lazy::new(|| Pool::new());
 
 /// The Intern Pool  
 #[derive(Debug)]
