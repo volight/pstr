@@ -1,7 +1,8 @@
 //! The Intern Pool  
 
 use std::{
-    ffi::OsStr,
+    borrow::Borrow,
+    ffi::{CStr, OsStr},
     hash::Hash,
     ops::Deref,
     sync::{Arc, RwLock},
@@ -15,6 +16,9 @@ pub static STR_POOL: Lazy<Pool<str>> = Lazy::new(|| Pool::new());
 
 /// The OsString Intern Pool  
 pub static OS_STR_POOL: Lazy<Pool<OsStr>> = Lazy::new(|| Pool::new());
+
+/// The CString Intern Pool  
+pub static C_STR_POOL: Lazy<Pool<CStr>> = Lazy::new(|| Pool::new());
 
 /// The Intern Pool  
 #[derive(Debug)]
@@ -111,6 +115,18 @@ impl<T: ?Sized> Deref for Intern<T> {
     #[inline]
     fn deref(&self) -> &Self::Target {
         self.0.deref()
+    }
+}
+
+impl<T: ?Sized> AsRef<T> for Intern<T> {
+    fn as_ref(&self) -> &T {
+        self.0.as_ref()
+    }
+}
+
+impl<T: ?Sized> Borrow<T> for Intern<T> {
+    fn borrow(&self) -> &T {
+        self.0.borrow()
     }
 }
 

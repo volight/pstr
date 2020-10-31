@@ -18,7 +18,7 @@ impl IOsStr {
     ///
     /// # Example
     /// ```
-    /// # use pstr::IOsStr;
+    /// # use pstr::ffi::IOsStr;
     /// let s = IOsStr::new("hello world");
     /// ```
     #[inline]
@@ -251,5 +251,23 @@ impl PartialEq<&OsStr> for IOsStr {
 impl PartialEq<OsString> for IOsStr {
     fn eq(&self, other: &OsString) -> bool {
         self.deref() == *other
+    }
+}
+
+impl PartialEq<str> for IOsStr {
+    fn eq(&self, other: &str) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&str> for IOsStr {
+    fn eq(&self, other: &&str) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<String> for IOsStr {
+    fn eq(&self, other: &String) -> bool {
+        self.deref() == other.as_str()
     }
 }

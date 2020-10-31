@@ -219,7 +219,10 @@ impl From<Rc<str>> for IStr {
 impl<'a> From<Cow<'a, str>> for IStr {
     #[inline]
     fn from(s: Cow<'a, str>) -> Self {
-        Self::new(s)
+        match s {
+            Cow::Borrowed(v) => Self::new(v),
+            Cow::Owned(v) => Self::from_string(v),
+        }
     }
 }
 
@@ -377,6 +380,24 @@ impl PartialEq<&str> for IStr {
 
 impl PartialEq<String> for IStr {
     fn eq(&self, other: &String) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<OsStr> for IStr {
+    fn eq(&self, other: &OsStr) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&OsStr> for IStr {
+    fn eq(&self, other: &&OsStr) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<OsString> for IStr {
+    fn eq(&self, other: &OsString) -> bool {
         self.deref() == *other
     }
 }

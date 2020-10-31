@@ -26,6 +26,8 @@ enum MowStrInner {
     M(Option<String>),
 }
 
+type Inner = MowStrInner;
+
 impl PartialEq for MowStrInner {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -64,7 +66,7 @@ impl PartialEq for MowStrInner {
 /// assert!(s.is_interned());
 /// ```
 #[derive(Debug, Eq, PartialEq, Ord, PartialOrd)]
-pub struct MowStr(MowStrInner);
+pub struct MowStr(Inner);
 
 impl MowStr {
     /// Create a `MowStr` from str slice  
@@ -76,7 +78,7 @@ impl MowStr {
     /// ```
     #[inline]
     pub fn new(s: impl AsRef<str>) -> Self {
-        Self(MowStrInner::I(IStr::new(s)))
+        Self(Inner::I(IStr::new(s)))
     }
 
     /// Create a `MowStr` from str slice with mutable  
@@ -89,7 +91,7 @@ impl MowStr {
     /// ```
     #[inline]
     pub fn new_mut(s: impl Into<String>) -> Self {
-        Self(MowStrInner::M(Some(s.into())))
+        Self(Inner::M(Some(s.into())))
     }
 
     /// Create a new empty `MowStr` with mutable  
@@ -114,43 +116,43 @@ impl MowStr {
     /// Create a `MowStr` from `String`  
     #[inline]
     pub fn from_string(s: String) -> Self {
-        Self(MowStrInner::I(IStr::from_string(s)))
+        Self(Inner::I(IStr::from_string(s)))
     }
 
     /// Create a `MowStr` from `String` with mutable  
     #[inline]
     pub fn from_string_mut(s: String) -> Self {
-        Self(MowStrInner::M(Some(s)))
+        Self(Inner::M(Some(s)))
     }
 
     /// Create a `MowStr` from `Box<str>`  
     #[inline]
     pub fn from_boxed(s: Box<str>) -> Self {
-        Self(MowStrInner::I(IStr::from_boxed(s)))
+        Self(Inner::I(IStr::from_boxed(s)))
     }
 
     /// Create a `MowStr` from `Arc<str>`  
     #[inline]
     pub fn from_arc(s: Arc<str>) -> Self {
-        Self(MowStrInner::I(IStr::from_arc(s)))
+        Self(Inner::I(IStr::from_arc(s)))
     }
 
     /// Create a `MowStr` from `Rc<str>`  
     #[inline]
     pub fn from_rc(s: Rc<str>) -> Self {
-        Self(MowStrInner::I(IStr::from_rc(s)))
+        Self(Inner::I(IStr::from_rc(s)))
     }
 
     /// Create a `MowStr` from `IStr`  
     #[inline]
     pub fn from_istr(s: IStr) -> Self {
-        Self(MowStrInner::I(s))
+        Self(Inner::I(s))
     }
 
     /// Create a `MowStr` from custom fn  
     #[inline]
     pub fn from_to_arc<S: AsRef<str>>(s: S, to_arc: impl FnOnce(S) -> Arc<str>) -> Self {
-        Self(MowStrInner::I(IStr::from_to_arc(s, to_arc)))
+        Self(Inner::I(IStr::from_to_arc(s, to_arc)))
     }
 }
 
@@ -160,7 +162,7 @@ impl MowStr {
     #[inline]
     pub fn intern(&mut self) {
         let s = match &mut self.0 {
-            MowStrInner::I(_) => return,
+            Inner::I(_) => return,
             MowStrInner::M(s) => s.take().unwrap(),
         };
         *self = Self::from_string(s);
@@ -171,8 +173,8 @@ impl MowStr {
     #[inline]
     pub fn to_mut(&mut self) {
         let s = match &mut self.0 {
-            MowStrInner::I(v) => v.to_string(),
-            MowStrInner::M(_) => return,
+            Inner::I(v) => v.to_string(),
+            Inner::M(_) => return,
         };
         *self = Self::from_string_mut(s);
     }
@@ -182,8 +184,8 @@ impl MowStr {
     pub fn mutdown(&mut self) -> &mut String {
         self.to_mut();
         match &mut self.0 {
-            MowStrInner::I(_) => panic!("never"),
-            MowStrInner::M(v) => v.as_mut().unwrap(),
+            Inner::I(_) => panic!("never"),
+            Inner::M(v) => v.as_mut().unwrap(),
         }
     }
 
@@ -191,8 +193,8 @@ impl MowStr {
     #[inline]
     pub fn to_mut_by(&mut self, f: impl FnOnce(&mut IStr) -> String) {
         let s = match &mut self.0 {
-            MowStrInner::I(v) => f(v),
-            MowStrInner::M(_) => return,
+            Inner::I(v) => f(v),
+            Inner::M(_) => return,
         };
         *self = Self::from_string_mut(s);
     }
@@ -201,7 +203,7 @@ impl MowStr {
     /// Return `None` if self is interned  
     pub fn swap_mut(&mut self, s: String) -> Option<String> {
         let r = match &mut self.0 {
-            MowStrInner::I(_) => None,
+            Inner::I(_) => None,
             MowStrInner::M(s) => Some(s.take().unwrap()),
         };
         *self = Self::from_string_mut(s);
@@ -213,7 +215,7 @@ impl MowStr {
     /// Return `None` if self is interned  
     pub fn try_swap_mut(&mut self, s: String) -> Option<String> {
         let r = match &mut self.0 {
-            MowStrInner::I(_) => None,
+            Inner::I(_) => None,
             MowStrInner::M(s) => Some(s.take().unwrap()),
         };
         if r.is_some() {
@@ -225,13 +227,13 @@ impl MowStr {
     /// Check if it is in intern pool  
     #[inline]
     pub fn is_interned(&self) -> bool {
-        matches!(&self.0, MowStrInner::I(_))
+        matches!(&self.0, Inner::I(_))
     }
 
     /// Check if it is mutable  
     #[inline]
     pub fn is_mutable(&self) -> bool {
-        matches!(&self.0, MowStrInner::M(_))
+        matches!(&self.0, Inner::M(_))
     }
 }
 
@@ -282,8 +284,8 @@ impl MowStr {
     #[inline]
     pub fn into_string(self) -> String {
         match self.0 {
-            MowStrInner::I(v) => v.to_string(),
-            MowStrInner::M(v) => v.unwrap(),
+            Inner::I(v) => v.to_string(),
+            Inner::M(v) => v.unwrap(),
         }
     }
 
@@ -291,8 +293,8 @@ impl MowStr {
     #[inline]
     pub fn into_boxed_str(self) -> Box<str> {
         match self.0 {
-            MowStrInner::I(v) => v.into_boxed_str(),
-            MowStrInner::M(v) => v.unwrap().into_boxed_str(),
+            Inner::I(v) => v.into_boxed_str(),
+            Inner::M(v) => v.unwrap().into_boxed_str(),
         }
     }
 }
@@ -485,8 +487,8 @@ unsafe impl Muterned for MowStr {}
 impl Clone for MowStr {
     fn clone(&self) -> Self {
         match &self.0 {
-            MowStrInner::I(v) => Self::from_istr(v.clone()),
-            MowStrInner::M(v) => Self::from_string(v.clone().unwrap()),
+            Inner::I(v) => Self::from_istr(v.clone()),
+            Inner::M(v) => Self::from_string(v.clone().unwrap()),
         }
     }
 }
@@ -520,8 +522,8 @@ impl AsRef<str> for MowStr {
     #[inline]
     fn as_ref(&self) -> &str {
         match &self.0 {
-            MowStrInner::I(v) => v.as_ref(),
-            MowStrInner::M(v) => v.as_ref().unwrap(),
+            Inner::I(v) => v.as_ref(),
+            Inner::M(v) => v.as_ref().unwrap(),
         }
     }
 }
@@ -544,8 +546,8 @@ impl AsRef<[u8]> for MowStr {
     #[inline]
     fn as_ref(&self) -> &[u8] {
         match &self.0 {
-            MowStrInner::I(v) => v.as_ref(),
-            MowStrInner::M(v) => v.as_ref().unwrap().as_ref(),
+            Inner::I(v) => v.as_ref(),
+            Inner::M(v) => v.as_ref().unwrap().as_ref(),
         }
     }
 }
@@ -554,8 +556,8 @@ impl AsRef<OsStr> for MowStr {
     #[inline]
     fn as_ref(&self) -> &OsStr {
         match &self.0 {
-            MowStrInner::I(v) => v.as_ref(),
-            MowStrInner::M(v) => v.as_ref().unwrap().as_ref(),
+            Inner::I(v) => v.as_ref(),
+            Inner::M(v) => v.as_ref().unwrap().as_ref(),
         }
     }
 }
@@ -564,8 +566,8 @@ impl AsRef<Path> for MowStr {
     #[inline]
     fn as_ref(&self) -> &Path {
         match &self.0 {
-            MowStrInner::I(v) => v.as_ref(),
-            MowStrInner::M(v) => v.as_ref().unwrap().as_ref(),
+            Inner::I(v) => v.as_ref(),
+            Inner::M(v) => v.as_ref().unwrap().as_ref(),
         }
     }
 }
@@ -766,8 +768,8 @@ impl ToString for MowStr {
     #[inline]
     fn to_string(&self) -> String {
         match &self.0 {
-            MowStrInner::I(v) => v.to_string(),
-            MowStrInner::M(v) => v.clone().unwrap(),
+            Inner::I(v) => v.to_string(),
+            Inner::M(v) => v.clone().unwrap(),
         }
     }
 }
@@ -825,8 +827,8 @@ impl From<MowStr> for Box<str> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.deref()),
-            MowStrInner::M(v) => Self::from(v.as_deref().unwrap()),
+            Inner::I(v) => Self::from(v.deref()),
+            Inner::M(v) => Self::from(v.as_deref().unwrap()),
         }
     }
 }
@@ -835,8 +837,8 @@ impl From<MowStr> for Vec<u8> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.deref()),
-            MowStrInner::M(v) => Self::from(v.as_deref().unwrap()),
+            Inner::I(v) => Self::from(v.deref()),
+            Inner::M(v) => Self::from(v.as_deref().unwrap()),
         }
     }
 }
@@ -845,8 +847,8 @@ impl From<MowStr> for Arc<str> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.clone()),
-            MowStrInner::M(v) => Self::from(v.clone().unwrap()),
+            Inner::I(v) => Self::from(v.clone()),
+            Inner::M(v) => Self::from(v.clone().unwrap()),
         }
     }
 }
@@ -855,8 +857,8 @@ impl From<MowStr> for Rc<str> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.clone()),
-            MowStrInner::M(v) => Self::from(v.clone().unwrap()),
+            Inner::I(v) => Self::from(v.clone()),
+            Inner::M(v) => Self::from(v.clone().unwrap()),
         }
     }
 }
@@ -879,8 +881,8 @@ impl From<MowStr> for Box<dyn Error> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.clone()),
-            MowStrInner::M(v) => Self::from(v.clone().unwrap()),
+            Inner::I(v) => Self::from(v.clone()),
+            Inner::M(v) => Self::from(v.clone().unwrap()),
         }
     }
 }
@@ -889,8 +891,8 @@ impl From<MowStr> for Box<dyn Error + Send + Sync> {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.clone()),
-            MowStrInner::M(v) => Self::from(v.clone().unwrap()),
+            Inner::I(v) => Self::from(v.clone()),
+            Inner::M(v) => Self::from(v.clone().unwrap()),
         }
     }
 }
@@ -899,8 +901,8 @@ impl From<MowStr> for OsString {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.deref()),
-            MowStrInner::M(v) => Self::from(v.as_ref().unwrap()),
+            Inner::I(v) => Self::from(v.deref()),
+            Inner::M(v) => Self::from(v.as_ref().unwrap()),
         }
     }
 }
@@ -909,8 +911,8 @@ impl From<MowStr> for PathBuf {
     #[inline]
     fn from(v: MowStr) -> Self {
         match &v.0 {
-            MowStrInner::I(v) => Self::from(v.deref()),
-            MowStrInner::M(v) => Self::from(v.as_ref().unwrap()),
+            Inner::I(v) => Self::from(v.deref()),
+            Inner::M(v) => Self::from(v.as_ref().unwrap()),
         }
     }
 }
@@ -925,8 +927,8 @@ impl From<IStr> for MowStr {
 impl From<MowStr> for IStr {
     fn from(v: MowStr) -> Self {
         match v.0 {
-            MowStrInner::I(v) => v,
-            MowStrInner::M(v) => Self::from_string(v.unwrap()),
+            Inner::I(v) => v,
+            Inner::M(v) => Self::from_string(v.unwrap()),
         }
     }
 }
@@ -945,6 +947,24 @@ impl PartialEq<&str> for MowStr {
 
 impl PartialEq<String> for MowStr {
     fn eq(&self, other: &String) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<OsStr> for MowStr {
+    fn eq(&self, other: &OsStr) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&OsStr> for MowStr {
+    fn eq(&self, other: &&OsStr) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<OsString> for MowStr {
+    fn eq(&self, other: &OsString) -> bool {
         self.deref() == *other
     }
 }

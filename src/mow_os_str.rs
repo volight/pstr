@@ -46,14 +46,14 @@ impl PartialEq for MowOsStrInner {
 ///
 /// # Example
 /// ```
-/// # use pstr::MowOsStr;
+/// # use pstr::ffi::MowOsStr;
 /// let mut s = MowOsStr::new("hello");
 /// assert!(s.is_interned());
 ///
-/// s.push_str(" ");
+/// s.push(" ");
 /// assert!(s.is_mutable());
 ///
-/// s.mutdown().push_str("world");
+/// s.mutdown().push("world");
 /// assert_eq!(s, "hello world");
 ///
 /// s.intern();
@@ -67,7 +67,7 @@ impl MowOsStr {
     ///
     /// # Example
     /// ```
-    /// # use pstr::MowOsStr;
+    /// # use pstr::ffi::MowOsStr;
     /// let s = MowOsStr::new("hello world");
     /// ```
     #[inline]
@@ -79,7 +79,7 @@ impl MowOsStr {
     ///
     /// # Example
     /// ```
-    /// # use pstr::MowOsStr;
+    /// # use pstr::ffi::MowOsStr;
     /// let s = MowOsStr::new_mut("hello world");
     /// assert!(s.is_mutable());
     /// ```
@@ -92,7 +92,7 @@ impl MowOsStr {
     ///
     /// # Example
     /// ```
-    /// # use pstr::MowOsStr;
+    /// # use pstr::ffi::MowOsStr;
     /// let s = MowOsStr::mut_empty();
     /// assert!(s.is_mutable());
     /// ```
@@ -516,5 +516,40 @@ impl PartialEq<&OsStr> for MowOsStr {
 impl PartialEq<OsString> for MowOsStr {
     fn eq(&self, other: &OsString) -> bool {
         self.deref() == *other
+    }
+}
+
+impl PartialEq<str> for MowOsStr {
+    fn eq(&self, other: &str) -> bool {
+        self.deref() == other
+    }
+}
+
+impl PartialEq<&str> for MowOsStr {
+    fn eq(&self, other: &&str) -> bool {
+        self.deref() == *other
+    }
+}
+
+impl PartialEq<String> for MowOsStr {
+    fn eq(&self, other: &String) -> bool {
+        self.deref() == other.as_str()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test() {
+        let mut s = MowOsStr::new("hello");
+        assert!(s.is_interned());
+
+        s.push(" ");
+        assert!(s.is_mutable());
+
+        s.mutdown().push("world");
+        assert_eq!(s, "hello world");
     }
 }
