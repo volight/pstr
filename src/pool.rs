@@ -1,12 +1,20 @@
 //! The Intern Pool  
 
-use std::{ops::Deref, hash::Hash, sync::{Arc, RwLock}};
+use std::{
+    ffi::OsStr,
+    hash::Hash,
+    ops::Deref,
+    sync::{Arc, RwLock},
+};
 
 use dashmap::DashSet;
 use once_cell::sync::Lazy;
 
 /// The String Intern Pool  
 pub static STR_POOL: Lazy<Pool<str>> = Lazy::new(|| Pool::new());
+
+/// The OsString Intern Pool  
+pub static OS_STR_POOL: Lazy<Pool<OsStr>> = Lazy::new(|| Pool::new());
 
 /// The Intern Pool  
 #[derive(Debug)]
@@ -91,18 +99,24 @@ impl<T: ?Sized> PartialEq for Intern<T> {
     }
 }
 
-impl<T: ?Sized> Clone for  Intern<T> {
+impl<T: ?Sized> Clone for Intern<T> {
     fn clone(&self) -> Self {
         Self(self.0.clone())
     }
 }
 
-impl<T: ?Sized> Deref for  Intern<T> {
+impl<T: ?Sized> Deref for Intern<T> {
     type Target = T;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
         self.0.deref()
+    }
+}
+
+impl<T: ?Sized> From<Intern<T>> for Arc<T> {
+    fn from(v: Intern<T>) -> Self {
+        v.0
     }
 }
 

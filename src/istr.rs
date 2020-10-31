@@ -15,7 +15,11 @@ use std::{
     sync::Arc,
 };
 
-use crate::{intern::Interned, pool::{Intern, STR_POOL}, MowStr};
+use crate::{
+    intern::Interned,
+    pool::{Intern, STR_POOL},
+    MowStr,
+};
 
 /// Immutable Interning String
 #[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
