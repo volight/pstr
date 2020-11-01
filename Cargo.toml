@@ -1,6 +1,6 @@
 [package]
 name = "pstr"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["2A5F <u2a5f@outlook.com>"]
 edition = "2018"
 description = "Global String Intern Pool"

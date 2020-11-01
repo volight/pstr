@@ -229,6 +229,24 @@ impl MowOsStr {
     pub fn is_mutable(&self) -> bool {
         matches!(&self.0, Inner::M(_))
     }
+
+    /// Try get `IOsStr`
+    #[inline]
+    pub fn try_istr(&self) -> Option<&IOsStr> {
+        match &self.0 {
+            Inner::I(v) => Some(v),
+            Inner::M(_) => None,
+        }
+    }
+
+    /// Try get `OsString`
+    #[inline]
+    pub fn try_string(&self) -> Option<&OsString> {
+        match &self.0 {
+            Inner::I(_) => None,
+            Inner::M(v) => Some(v.as_ref().unwrap()),
+        }
+    }
 }
 
 impl MowOsStr {

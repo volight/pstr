@@ -235,6 +235,24 @@ impl MowStr {
     pub fn is_mutable(&self) -> bool {
         matches!(&self.0, Inner::M(_))
     }
+
+    /// Try get `IStr`
+    #[inline]
+    pub fn try_istr(&self) -> Option<&IStr> {
+        match &self.0 {
+            Inner::I(v) => Some(v),
+            Inner::M(_) => None,
+        }
+    }
+
+    /// Try get `String`
+    #[inline]
+    pub fn try_string(&self) -> Option<&String> {
+        match &self.0 {
+            Inner::I(_) => None,
+            Inner::M(v) => Some(v.as_ref().unwrap()),
+        }
+    }
 }
 
 impl MowStr {
