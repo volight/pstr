@@ -253,6 +253,15 @@ impl MowStr {
             Inner::M(v) => Some(v.as_ref().unwrap()),
         }
     }
+
+    /// Make a `IStr`  
+    #[inline]
+    pub fn into_istr(&self) -> IStr {
+        match &self.0 {
+            Inner::I(v) => v.clone(),
+            Inner::M(s) => s.as_ref().unwrap().into(),
+        }
+    } 
 }
 
 impl MowStr {

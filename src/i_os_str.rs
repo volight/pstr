@@ -186,6 +186,20 @@ impl From<OsString> for IOsStr {
     }
 }
 
+impl From<&'_ OsStr> for IOsStr {
+    #[inline]
+    fn from(s: &OsStr) -> Self {
+        Self::new(s)
+    }
+}
+
+impl From<&'_ OsString> for IOsStr {
+    #[inline]
+    fn from(s: &OsString) -> Self {
+        Self::new(s)
+    }
+}
+
 impl From<String> for IOsStr {
     #[inline]
     fn from(s: String) -> Self {

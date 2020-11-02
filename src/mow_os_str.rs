@@ -247,6 +247,15 @@ impl MowOsStr {
             Inner::M(v) => Some(v.as_ref().unwrap()),
         }
     }
+
+    /// Make a `IStr`  
+    #[inline]
+    pub fn into_i_os_str(&self) -> IOsStr {
+        match &self.0 {
+            Inner::I(v) => v.clone(),
+            Inner::M(s) => s.as_ref().unwrap().into(),
+        }
+    }
 }
 
 impl MowOsStr {
